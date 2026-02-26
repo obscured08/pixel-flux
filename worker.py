@@ -24,7 +24,8 @@ async def process_image(input_path, mask_path, params_json, progress_callback=No
         params['thresh_upper_start'] != params['thresh_upper_end'] or
         params['rand_start'] != params['rand_end'] or
         params['char_start'] != params['char_end'] or
-        params['blur_start'] != params['blur_end']
+        params['blur_start'] != params['blur_end'] or
+        params['post_blur_start'] != params['post_blur_end']
     )
     
     target_frames = int(params.get('frame_count', 15))
