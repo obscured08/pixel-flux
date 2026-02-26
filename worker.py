@@ -79,7 +79,7 @@ async def process_image(input_path, mask_path, params_json, progress_callback=No
                 lower_threshold=float(cur_tl),
                 upper_threshold=float(cur_tu),
                 randomness=float(cur_rnd),
-                char_length=float(cur_cl),
+                char_length=int(cur_cl),
                 angle=float(cur_ang)
             )
             processed_frames.append(sorted_frame)
