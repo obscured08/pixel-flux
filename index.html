@@ -201,7 +201,8 @@
         ['randStart', 'randStartVal'], ['randEnd', 'randEndVal'],
         ['charStart', 'charStartVal'], ['charEnd', 'charEndVal'],
         ['blurStart', 'blurStartVal'], ['blurEnd', 'blurEndVal'],
-        ['frameCount', 'frameCountVal'], ['fps', 'fpsVal'],['postBlurStart', 'postBlurStartVal'], ['postBlurEnd', 'postBlurEndVal']
+        ['frameCount', 'frameCountVal'], ['fps', 'fpsVal'],
+        ['postBlurStart', 'postBlurStartVal'], ['postBlurEnd', 'postBlurEndVal']
     ];
     sliderPairs.forEach(pair => sync(pair[0], pair[1]));
 
@@ -350,7 +351,7 @@ function handleImage(e) {
             use_source_fps: document.getElementById('useSourceFps').checked,
             sort_func: document.getElementById('sortFunc').value,
             interval_func: document.getElementById('intervalFunc').value,
-            invert_mask: document.getElementById('invertMask').checked
+            invert_mask: document.getElementById('invertMask').checked,
             post_blur_start: parseFloat(document.getElementById('postBlurStart').value),
             post_blur_end: parseFloat(document.getElementById('postBlurEnd').value),
         };
