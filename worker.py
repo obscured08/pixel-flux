@@ -48,7 +48,7 @@ async def process_image(input_path, mask_path, params_json, progress_callback=No
     for i, frame in enumerate(original_frames):
         if progress_callback:
             progress_callback(i + 1, total_frames)
-        await asyncio.sleep(0) # Yield for UI update
+        await asyncio.sleep(0) 
 
         t = i / (total_frames - 1) if total_frames > 1 else 0
         
@@ -69,8 +69,8 @@ async def process_image(input_path, mask_path, params_json, progress_callback=No
             cur_mask = mask_img.resize(work_frame.size)
 
         try:
-            print(f"Frame {i}: Mode={params['interval_func']}, CL={cur_cl}, TL={cur_tl}, TU={cur_tu}")
-
+            print(f"Frame {i}: Mode={params['interval_func']}, CL={cur_cl:.2f}, TL={cur_tl:.2f}, TU={cur_tu:.2f}")
+            
             sorted_frame = ps_func(
                 work_frame,
                 mask_image=cur_mask,
@@ -84,6 +84,7 @@ async def process_image(input_path, mask_path, params_json, progress_callback=No
             )
             processed_frames.append(sorted_frame)
         except Exception as e:
+            print(f"Python Error on Frame {i}: {e}")
             processed_frames.append(work_frame)
 
     # --- Save & Export ---
