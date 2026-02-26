@@ -166,8 +166,8 @@
     
     <img id="outputImage" class="hidden max-h-full max-w-full shadow-lg object-contain">
     
-    <a id="downloadBtn" class="hidden bg-blue-600 px-8 py-3 rounded-full text-white font-bold shadow-lg mt-4">
-        Download Result
+    <a id="downloadBtn" target="_blank" rel="noopener noreferrer" class="hidden bg-blue-600 px-8 py-3 rounded-full text-white font-bold shadow-lg mt-4">
+        View/Download Result
     </a>
     
     <div id="placeholder" class="text-gray-600">Upload an image to begin.</div>
@@ -345,14 +345,34 @@ function handleImage(e) {
         try {
             const process_image = pyodide.globals.get('process_image');
             const result = await process_image("input_image", maskBytes ? "input_mask" : null, JSON.stringify(params), updateProgress);
+            
+   
             const blob = new Blob([result.toJs()], { type: 'image/gif' });
             const url = URL.createObjectURL(blob);
-            document.getElementById('outputImage').src = url;
-            document.getElementById('outputImage').classList.remove('hidden');
-            document.getElementById('downloadBtn').href = url;
-            document.getElementById('downloadBtn').classList.remove('hidden');
+            
+       
+            const outImg = document.getElementById('outputImage');
+            outImg.src = url;
+            outImg.classList.remove('hidden');
+
+       
+            const dlBtn = document.getElementById('downloadBtn');
+            dlBtn.href = url;
+
+           
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+            dlBtn.setAttribute('download', `pixel-flux-${timestamp}.gif`);
+
+          
+            dlBtn.classList.remove('hidden');
             document.getElementById('placeholder').classList.add('hidden');
-        } catch (e) { alert(e); } finally { loader.classList.add('hidden'); }
+
+
+        } catch (e) { 
+            alert("Processing Error: " + e); 
+        } finally { 
+            loader.classList.add('hidden'); 
+        }
     });
 </script>
 </body>
