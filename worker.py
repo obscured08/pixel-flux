@@ -5,6 +5,7 @@ from PIL import Image, ImageSequence, ImageFilter, ImageOps
 from pixelsort import pixelsort as ps_func
 
 async def process_image(input_path, mask_path, params_json, progress_callback=None):
+    print("PYTHON STARTING...")
     params = json.loads(params_json)
     img = Image.open(input_path)
     

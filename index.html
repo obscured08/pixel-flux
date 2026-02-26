@@ -232,7 +232,10 @@ async function init() {
     const status = document.getElementById('status');
     try {
         status.innerText = "Loading Pyodide...";
-        pyodide = await loadPyodide();
+        pyodide = await loadPyodide({
+    stdout: (text) => console.log("Python STDOUT:", text),
+    stderr: (text) => console.error("Python STDERR:", text)
+});
         await pyodide.loadPackage(["micropip", "numpy", "Pillow"]);
 
         status.innerText = "Syncing Pixel Flux Engine...";
