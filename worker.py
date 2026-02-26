@@ -69,7 +69,8 @@ async def process_image(input_path, mask_path, params_json, progress_callback=No
             cur_mask = mask_img.resize(work_frame.size)
 
         try:
-            print(f"Frame {i}: Mode={params['interval_func']}, CL={cur_cl:.2f}, TL={cur_tl:.2f}, TU={cur_tu:.2f}")
+            print(f"Frame {i}: Mode={params['interval_func']}, CL={cur_cl}, TL={cur_tl:.2f}, TU={cur_tu:.2f}")
+            
             
             sorted_frame = ps_func(
                 work_frame,
