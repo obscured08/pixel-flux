@@ -59,6 +59,7 @@ async def process_image(input_path, mask_path, params_json, progress_callback=No
         cur_rnd = params['rand_start'] + (params['rand_end'] - params['rand_start']) * t
         cur_cl = params['char_start'] + (params['char_end'] - params['char_start']) * t
         cur_blr = params['blur_start'] + (params['blur_end'] - params['blur_start']) * t
+        cur_post_blr = params['post_blur_start'] + (params['post_blur_end'] - params['post_blur_start']) * t
 
         work_frame = frame.convert("RGB")
         if cur_blr > 0:
@@ -83,6 +84,10 @@ async def process_image(input_path, mask_path, params_json, progress_callback=No
                 char_length=int(cur_cl),
                 angle=float(cur_ang)
             )
+
+            if cur_post_blr > 0:
+                sorted_frame = sorted_frame.filter(ImageFilter.GaussianBlur(cur_post_blr))
+
             processed_frames.append(sorted_frame)
         except Exception as e:
             print(f"Python Error on Frame {i}: {e}")

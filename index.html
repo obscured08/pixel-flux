@@ -153,6 +153,14 @@
             <div class="slider-row"><span>End:</span><input type="range" id="blurEnd" min="0" max="50" value="0"><input type="number" id="blurEndVal" value="0"></div>
         </div>
 
+        <div class="control-group">
+            <span class="text-sm font-bold text-blue-400">Post-Sort Blur (Radius)</span>
+            <div class="text-xs text-gray-500 mb-2 italic">Blurs the result after sorting.</div>
+            <button class="sync-btn" onclick="syncValues('postBlur')" title="Sync Start to End">=</button>
+            <div class="slider-row"><span>Start:</span><input type="range" id="postBlurStart" min="0" max="50" value="0"><input type="number" id="postBlurStartVal" value="0"></div>
+            <div class="slider-row"><span>End:</span><input type="range" id="postBlurEnd" min="0" max="50" value="0"><input type="number" id="postBlurEndVal" value="0"></div>
+       </div>
+
 
 
         <button id="processBtn" class="w-full bg-green-600 text-white font-bold py-4 rounded disabled:opacity-50 mb-10" disabled>PROCESS</button>
@@ -193,7 +201,7 @@
         ['randStart', 'randStartVal'], ['randEnd', 'randEndVal'],
         ['charStart', 'charStartVal'], ['charEnd', 'charEndVal'],
         ['blurStart', 'blurStartVal'], ['blurEnd', 'blurEndVal'],
-        ['frameCount', 'frameCountVal'], ['fps', 'fpsVal']
+        ['frameCount', 'frameCountVal'], ['fps', 'fpsVal'],['postBlurStart', 'postBlurStartVal'] and ['postBlurEnd', 'postBlurEndVal']
     ];
     sliderPairs.forEach(pair => sync(pair[0], pair[1]));
 
@@ -343,6 +351,8 @@ function handleImage(e) {
             sort_func: document.getElementById('sortFunc').value,
             interval_func: document.getElementById('intervalFunc').value,
             invert_mask: document.getElementById('invertMask').checked
+            post_blur_start: parseFloat(document.getElementById('postBlurStart').value),
+            post_blur_end: parseFloat(document.getElementById('postBlurEnd').value),
         };
 
         try {
