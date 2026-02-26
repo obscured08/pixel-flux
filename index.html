@@ -306,7 +306,7 @@ function handleImage(e) {
 
     
     document.getElementById('processBtn').addEventListener('click', async () => {
-        const fileInput = document.getElementById('fileInput');
+        const fileInput = document.getElementById('imageInput');
         if (!fileInput.files.length) return alert("Select a file.");
         const loader = document.getElementById('loader');
         loader.classList.remove('hidden');
