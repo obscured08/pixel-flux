@@ -4,7 +4,7 @@ import pixelsort
 from PIL import Image, ImageSequence, ImageFilter, ImageOps
 from pixelsort import pixelsort as ps_func
 
-async def process_image(input_path, mask_path, params_json, progress_callback=None):
+async def process_image(input_path, mask_path, interval_path, params_json, progress_callback=None):
     print("PYTHON STARTING...")
     params = json.loads(params_json)
     img = Image.open(input_path)
@@ -15,6 +15,13 @@ async def process_image(input_path, mask_path, params_json, progress_callback=No
         mask_img = Image.open(mask_path).convert('L')
         if params['invert_mask']:
             mask_img = ImageOps.invert(mask_img)
+
+    # --- Interval Image Loading (NEW) ---
+    interval_img = None
+    if interval_path:
+        interval_img = Image.open(interval_path).convert('L')
+        if params.get('invert_interval', False):
+            interval_img = ImageOps.invert(interval_img)
 
     # --- Frame Detection Logic ---
     input_is_animated = getattr(img, "is_animated", False) and img.n_frames > 1
@@ -66,17 +73,27 @@ async def process_image(input_path, mask_path, params_json, progress_callback=No
         if cur_blr > 0:
             work_frame = work_frame.filter(ImageFilter.GaussianBlur(cur_blr))
 
+        # Resize Mask & Interval to match current frame size
         cur_mask = None
         if mask_img:
             cur_mask = mask_img.resize(work_frame.size)
+            
+        cur_interval = None
+        if interval_img:
+            cur_interval = interval_img.resize(work_frame.size)
 
         try:
-            print(f"Frame {i}: Mode={params['interval_func']}, CL={cur_cl}, TL={cur_tl:.2f}, TU={cur_tu:.2f}")
+            # DEBUG: Check if interval is actually present
+            interval_status = "NONE"
+            if cur_interval:
+                interval_status = f"LOADED ({cur_interval.size})"
             
+            print(f"Frame {i}: Mode={params['interval_func']}, IntervalImg={interval_status}, CL={int(cur_cl)}")
             
             sorted_frame = ps_func(
                 work_frame,
                 mask_image=cur_mask,
+                interval_image=cur_interval, 
                 interval_function=params['interval_func'],
                 sorting_function=params['sort_func'],
                 lower_threshold=float(cur_tl),
