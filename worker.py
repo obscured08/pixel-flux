@@ -1,8 +1,10 @@
 import asyncio
 import json
 import pixelsort
-from PIL import Image, ImageSequence, ImageFilter, ImageOps
+from PIL import Image, ImageSequence, ImageFilter, ImageOps, ImageFile
 from pixelsort import pixelsort as ps_func
+
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 async def process_image(input_path, mask_path, interval_path, params_json, progress_callback=None):
     print("PYTHON STARTING...")
