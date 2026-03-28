@@ -60,7 +60,8 @@ async def process_image(input_path, mask_path, interval_path, params_json, progr
             progress_callback(i + 1, total_frames)
         await asyncio.sleep(0) 
 
-        t = i / (total_frames - 1) if total_frames > 1 else 0
+        # Removing the -1 makes the 'End' value represent the start of the NEXT loop
+        t = i / total_frames if total_frames > 1 else 0
         
         # Interpolate all parameters
         cur_ang = params['angle_start'] + (params['angle_end'] - params['angle_start']) * t
