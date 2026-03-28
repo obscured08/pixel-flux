@@ -30,9 +30,16 @@
             <div class="control-group">
                 <label class="block mb-2 font-bold text-green-400 text-sm">1. Input Image/GIF</label>
                 <input type="file" id="imageInput" accept="image/*" onchange="handleImage(event)" class="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-gray-600 file:text-white hover:file:bg-green-500">
-                <label class="flex items-center gap-2 text-sm text-gray-300 cursor-pointer mt-2">
-                    <input type="checkbox" id="downscaleImage" checked class="rounded text-green-500 focus:ring-green-500 bg-gray-700 border-gray-600"> Optimize Large Images
-                </label>
+                <div class="flex items-center gap-2 mt-2">
+                    <label class="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
+                        <input type="checkbox" id="downscaleImage" checked class="rounded text-green-500 focus:ring-green-500 bg-gray-700 border-gray-600"> Optimize:
+                    </label>
+                    <select id="downscaleSize" class="bg-gray-800 border border-gray-700 text-gray-300 text-xs rounded p-1 focus:ring-green-500 focus:border-green-500 cursor-pointer">
+                        <option value="800">Small (800px)</option>
+                        <option value="1280">Medium (1280px)</option>
+                        <option value="1920" selected>Large (1920px)</option>
+                    </select>
+                </div>
                 <div id="scaleFeedback" class="scale-feedback hidden"></div>
             </div>
 
@@ -358,7 +365,7 @@
         if (!feedbackEl) return;
         
         const shouldDownscale = document.getElementById('downscaleImage').checked;
-        const MAX_SIZE = 1920;
+        const MAX_SIZE = parseInt(document.getElementById('downscaleSize').value, 10);
 
         if (type === 'image/gif') {
             feedbackEl.innerText = `Original: ${width}x${height} (GIFs are not scaled)`;
@@ -386,14 +393,17 @@
         }
     }
 
-    // Add listener for checkbox toggle
-    document.getElementById('downscaleImage').addEventListener('change', () => {
+    // Add listeners for both the checkbox and the select menu
+    function triggerScaleFeedbackUpdate() {
         const img = document.getElementById('outputImage');
         const fileInput = document.getElementById('imageInput');
         if (img && img.src && fileInput.files.length > 0) {
             updateScaleFeedback(img.naturalWidth, img.naturalHeight, fileInput.files[0].type);
         }
-    });
+    }
+    
+    document.getElementById('downscaleImage').addEventListener('change', triggerScaleFeedbackUpdate);
+    document.getElementById('downscaleSize').addEventListener('change', triggerScaleFeedbackUpdate);
 
 async function setAsNewSource() {
     if (!window.latestBlob) return;
@@ -434,7 +444,7 @@ async function resizeImageIfNeeded(file) {
         
         img.onload = () => {
             URL.revokeObjectURL(url);
-            const MAX_SIZE = 1920; // Max width or height
+            const MAX_SIZE = parseInt(document.getElementById('downscaleSize').value, 10); // Max width or height
             let width = img.width;
             let height = img.height;
 
