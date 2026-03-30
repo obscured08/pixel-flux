@@ -93,9 +93,16 @@ async def process_image(input_path, mask_path, interval_path, params_json, progr
             
             print(f"Frame {i}: Mode={params['interval_func']}, IntervalImg={interval_status}, CL={int(cur_cl)}")
             
+            # --- Alpha Compositing Logic ---
+            sort_mask = cur_mask
+            if cur_mask and params.get('alpha_blend', False):
+                # Force the mask to be absolute black and white for the sorting engine to prevent dithering.
+                # Any pixel > 0 (even faint blur) becomes 255 (fully sorted).
+                sort_mask = cur_mask.point(lambda p: 255 if p > 0 else 0, mode='L')
+            
             sorted_frame = ps_func(
                 work_frame,
-                mask_image=cur_mask,
+                mask_image=sort_mask,
                 interval_image=cur_interval, 
                 interval_function=params['interval_func'],
                 sorting_function=params['sort_func'],
@@ -106,6 +113,10 @@ async def process_image(input_path, mask_path, interval_path, params_json, progr
                 angle=float(cur_ang)
             )
 
+            # Re-apply the original feathered mask to blend the hard sort smoothly with the original frame
+            if cur_mask and params.get('alpha_blend', False):
+                sorted_frame = Image.composite(sorted_frame, work_frame, cur_mask)
+
             if cur_post_blr > 0:
                 sorted_frame = sorted_frame.filter(ImageFilter.GaussianBlur(cur_post_blr))
 
@@ -115,10 +126,20 @@ async def process_image(input_path, mask_path, interval_path, params_json, progr
             processed_frames.append(work_frame)
 
     # --- Save & Export ---
-    output_path = "/output.gif"
-    processed_frames[0].save(
-        output_path, save_all=True, append_images=processed_frames[1:],
-        duration=duration_ms, loop=0
-    )
+    if len(processed_frames) > 1:
+        # Save as Animated GIF if multiple frames exist
+        output_path = "/output.gif"
+        processed_frames[0].save(
+            output_path, save_all=True, append_images=processed_frames[1:],
+            duration=duration_ms, loop=0
+        )
+        mime_type = "image/gif"
+    else:
+        # Save as High-Quality PNG if it's a still image
+        output_path = "/output.png"
+        processed_frames[0].save(output_path, format="PNG", optimize=True)
+        mime_type = "image/png"
+
     with open(output_path, "rb") as f:
-        return f.read()
+        # Return a simple List: [bytes, string]
+        return [f.read(), mime_type]

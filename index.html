@@ -38,8 +38,7 @@
                         <option value="1920">Large (1920px)</option>
                         <option value="1280">Medium (1280px)</option>
                         <option value="800">Small (800px)</option>
-			<option value="600" selected>Very Small (600px)</option>
-
+                        <option value="600" selected>Very Small (600px)</option>
                     </select>
                 </div>
                 <div id="scaleFeedback" class="scale-feedback hidden"></div>
@@ -49,9 +48,39 @@
                 <label class="block mb-1 font-bold text-green-400 text-sm">2. Mask (Optional)</label>
                 <div class="text-xs text-gray-500 mb-2 italic">Optional binary mask.</div>
                 <input type="file" id="maskInput" accept="image/*" class="w-full text-xs text-gray-400 mb-2 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-gray-600 file:text-white hover:file:bg-gray-500">
-                <label class="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
-                    <input type="checkbox" id="invertMask" class="rounded text-green-500 focus:ring-green-500 bg-gray-700 border-gray-600"> Invert Mask
-                </label>
+                
+                <div class="flex flex-col gap-2 mb-3">
+                    <label class="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
+                        <input type="checkbox" id="invertMask" class="rounded text-green-500 focus:ring-green-500 bg-gray-700 border-gray-600"> Invert Mask
+                    </label>
+                    <label class="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
+                        <input type="checkbox" id="alphaBlend" checked class="rounded text-green-500 focus:ring-green-500 bg-gray-700 border-gray-600"> Alpha Compositing (Smooth Fade)
+                    </label>
+                </div>
+                
+                <div class="border-t border-gray-700 pt-3 mt-1">
+                    <div class="flex justify-start items-center gap-4 mb-2">
+                        <span class="text-sm font-bold text-green-400">Draw Custom Mask</span>
+                        <button id="toggleMaskDrawBtn" class="bg-green-600 hover:bg-green-500 text-xs px-3 py-1 rounded text-white font-bold transition-colors" onclick="toggleMaskDrawing()">Enable</button>
+                    </div>
+                    <div id="maskDrawControls" class="hidden flex flex-col gap-2">
+                        <div class="slider-row">
+                            <span>Brush</span>
+                            <input type="range" id="brushSize" min="1" max="150" value="40" oninput="updateBrushSize(this.value)">
+                            <span id="brushSizeDisplay" class="text-xs text-right w-8">40</span>
+                        </div>
+                        <div class="slider-row">
+                            <span>Feather</span>
+                            <input type="range" id="maskFeather" min="0" max="100" value="0" oninput="updateFeather(this.value)">
+                            <span id="featherDisplay" class="text-xs text-right w-8">0px</span>
+                        </div>
+                        <div class="flex gap-2">
+                            <button class="bg-blue-900/40 hover:bg-blue-900/80 text-blue-200 border border-blue-800 text-xs py-1.5 rounded w-full transition-colors font-bold tracking-wide" onclick="undoMask()">UNDO</button>
+                            <button class="bg-blue-900/40 hover:bg-blue-900/80 text-blue-200 border border-blue-800 text-xs py-1.5 rounded w-full transition-colors font-bold tracking-wide" onclick="redoMask()">REDO</button>
+                            <button class="bg-red-900/40 hover:bg-red-900/80 text-red-200 border border-red-800 text-xs py-1.5 rounded w-full transition-colors font-bold tracking-wide" onclick="clearMask()">CLEAR</button>
+                        </div>
+                    </div>
+                </div>
             </div>
 
           <div class="control-group">
@@ -186,16 +215,19 @@
             <div id="progressText" class="text-green-400 mt-4 font-mono text-sm">Initializing...</div>
         </div>
         
-        <img id="outputImage" class="hidden max-h-full max-w-full shadow-2xl object-contain border border-gray-800">
+        <div id="imageWrapper" class="hidden relative shadow-2xl border border-gray-800" style="display: inline-block; max-width: 100%; max-height: 100%; line-height: 0;">
+            <img id="outputImage" draggable="false" style="max-width: 100%; max-height: 100%; display: block; width: auto; height: auto;">
+            <canvas id="maskCanvas" class="hidden" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; cursor: crosshair; z-index: 50; touch-action: none; opacity: 0.6; filter: blur(0px);"></canvas>
+        </div>
         
-	<div id="actionContainer" class="hidden">
-	    <a id="downloadBtn" target="_blank" rel="noopener noreferrer">
-	        VIEW / DOWNLOAD RESULT
-	    </a>
-	    <button id="setSourceBtn" onclick="setAsNewSource()">
-	        USE AS NEW SOURCE
-	    </button>
-	</div>
+        <div id="actionContainer" class="hidden">
+            <a id="downloadBtn" target="_blank" rel="noopener noreferrer">
+                VIEW / DOWNLOAD RESULT
+            </a>
+            <button id="setSourceBtn" onclick="setAsNewSource()">
+                USE AS NEW SOURCE
+            </button>
+        </div>
         
         <div id="placeholder" class="text-gray-600 flex flex-col items-center gap-2">
             <svg class="w-12 h-12 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
@@ -345,10 +377,11 @@
 
             img.onload = function() {
                 updateScaleFeedback(img.naturalWidth, img.naturalHeight, file.type);
+                if (isDrawingMask) initMaskCanvas();
             };
 
             img.src = event.target.result;
-            img.classList.remove('hidden');
+            document.getElementById('imageWrapper').classList.remove('hidden');
             
             if (placeholder) placeholder.classList.add('hidden');
 
@@ -410,8 +443,9 @@
 async function setAsNewSource() {
     if (!window.latestBlob) return;
     
-    // make a virtual file from the newly generated gif
-    const newFile = new File([window.latestBlob], "feedback.gif", { type: "image/gif" });
+    // make a virtual file from the newly generated png/gif
+    const ext = window.latestBlob.type === "image/png" ? ".png" : ".gif";
+    const newFile = new File([window.latestBlob], "feedback" + ext, { type: window.latestBlob.type || "image/gif" });
     
     // dataTransfer to programmatically "upload" it to the input
     const dataTransfer = new DataTransfer();
@@ -482,6 +516,156 @@ async function resizeImageIfNeeded(file) {
     });
 }
 
+    // --- Mask Drawing Logic ---
+    let isDrawingMask = false;
+    let isDrawing = false;
+    let maskCtx = null;
+    let drawnMaskPaths = false;
+    let undoStack = [];
+    let redoStack = [];
+
+    function toggleMaskDrawing() {
+        const canvas = document.getElementById('maskCanvas');
+        const btn = document.getElementById('toggleMaskDrawBtn');
+        const controls = document.getElementById('maskDrawControls');
+        
+        isDrawingMask = !isDrawingMask;
+        if (isDrawingMask) {
+            canvas.classList.remove('hidden');
+            btn.innerText = "Disable";
+            controls.classList.remove('hidden');
+            initMaskCanvas();
+        } else {
+            canvas.classList.add('hidden');
+            btn.innerText = "Enable";
+            controls.classList.add('hidden');
+        }
+    }
+
+    function initMaskCanvas() {
+        const img = document.getElementById('outputImage');
+        const canvas = document.getElementById('maskCanvas');
+        if (!img.src || img.src === "") return;
+        
+        // Save existing context content if resizing
+        let tempCanvas = null;
+        if (drawnMaskPaths && maskCtx) {
+            tempCanvas = document.createElement('canvas');
+            tempCanvas.width = canvas.width;
+            tempCanvas.height = canvas.height;
+            tempCanvas.getContext('2d').drawImage(canvas, 0, 0);
+        }
+
+        canvas.width = img.clientWidth;
+        canvas.height = img.clientHeight;
+        
+        maskCtx = canvas.getContext('2d');
+        maskCtx.lineCap = 'round';
+        maskCtx.lineJoin = 'round';
+        maskCtx.strokeStyle = 'rgb(239, 68, 68)'; // Solid Red, opacity handled by CSS
+        maskCtx.lineWidth = document.getElementById('brushSize').value;
+
+        if (tempCanvas) {
+            maskCtx.drawImage(tempCanvas, 0, 0, canvas.width, canvas.height);
+        } else {
+            undoStack = [];
+            redoStack = [];
+        }
+    }
+    
+    function saveMaskState() {
+        if (!maskCtx) return;
+        const canvas = document.getElementById('maskCanvas');
+        undoStack.push(maskCtx.getImageData(0, 0, canvas.width, canvas.height));
+        redoStack = []; // Clear redo stack on new action
+        if (undoStack.length > 30) undoStack.shift(); // Prevent memory bloat
+    }
+
+    function undoMask() {
+        if (undoStack.length > 0) {
+            const canvas = document.getElementById('maskCanvas');
+            redoStack.push(maskCtx.getImageData(0, 0, canvas.width, canvas.height));
+            const state = undoStack.pop();
+            maskCtx.putImageData(state, 0, 0);
+        }
+    }
+
+    function redoMask() {
+        if (redoStack.length > 0) {
+            const canvas = document.getElementById('maskCanvas');
+            undoStack.push(maskCtx.getImageData(0, 0, canvas.width, canvas.height));
+            const state = redoStack.pop();
+            maskCtx.putImageData(state, 0, 0);
+        }
+    }
+
+    function clearMask() {
+        if (maskCtx) {
+            saveMaskState();
+            const canvas = document.getElementById('maskCanvas');
+            maskCtx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+    }
+
+    function updateBrushSize(val) {
+        document.getElementById('brushSizeDisplay').innerText = val;
+        if (maskCtx) maskCtx.lineWidth = val;
+    }
+
+    function updateFeather(val) {
+        document.getElementById('featherDisplay').innerText = val + 'px';
+        document.getElementById('maskCanvas').style.filter = `blur(${val}px)`;
+    }
+    
+    const mCanvas = document.getElementById('maskCanvas');
+    function getPos(e) {
+        const rect = mCanvas.getBoundingClientRect();
+        const scaleX = mCanvas.width / rect.width;
+        const scaleY = mCanvas.height / rect.height;
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        return {
+            x: (clientX - rect.left) * scaleX,
+            y: (clientY - rect.top) * scaleY
+        };
+    }
+
+    function startDraw(e) {
+        if (!isDrawingMask) return;
+        e.preventDefault();
+        saveMaskState(); // Save state before new stroke
+        isDrawing = true;
+        drawnMaskPaths = true;
+        const pos = getPos(e);
+        maskCtx.beginPath();
+        maskCtx.moveTo(pos.x, pos.y);
+        // Draw a dot immediately for a single click
+        maskCtx.lineTo(pos.x, pos.y);
+        maskCtx.stroke();
+    }
+
+    function draw(e) {
+        if (!isDrawing || !isDrawingMask) return;
+        e.preventDefault();
+        const pos = getPos(e);
+        maskCtx.lineTo(pos.x, pos.y);
+        maskCtx.stroke();
+    }
+
+    function endDraw() {
+        isDrawing = false;
+    }
+
+    mCanvas.addEventListener('mousedown', startDraw);
+    mCanvas.addEventListener('mousemove', draw);
+    mCanvas.addEventListener('mouseup', endDraw);
+    mCanvas.addEventListener('mouseout', endDraw);
+    
+    mCanvas.addEventListener('touchstart', startDraw, {passive: false});
+    mCanvas.addEventListener('touchmove', draw, {passive: false});
+    mCanvas.addEventListener('touchend', endDraw);
+
+
     init();
 
     function updateProgress(current, total) {
@@ -496,7 +680,6 @@ document.getElementById('processBtn').addEventListener('click', async () => {
     
     const loader = document.getElementById('loader');
     loader.classList.remove('hidden');
-    //document.getElementById('downloadBtn').classList.add('hidden');
     document.getElementById('actionContainer').classList.add('hidden');
 
     // 1. Prepare Input Image
@@ -506,7 +689,50 @@ document.getElementById('processBtn').addEventListener('click', async () => {
 
     // 2. Prepare Mask
     let maskBytes = null;
-    if (document.getElementById('maskInput').files.length) {
+    if (drawnMaskPaths && isDrawingMask) {
+        // Generate mask from canvas
+        const exportCanvas = document.createElement('canvas');
+        const img = document.getElementById('outputImage');
+        exportCanvas.width = img.naturalWidth;
+        exportCanvas.height = img.naturalHeight;
+        const eCtx = exportCanvas.getContext('2d');
+        
+        // Fill black background
+        eCtx.fillStyle = 'black';
+        eCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+
+        // Apply global blur to the mask before exporting
+        const featherVal = parseFloat(document.getElementById('maskFeather').value);
+        // Calculate blur scale to match the full image resolution
+        const displayWidth = img.clientWidth || exportCanvas.width;
+        const scaleRatio = exportCanvas.width / displayWidth;
+        const actualBlur = featherVal * scaleRatio;
+
+        if (actualBlur > 0) {
+            eCtx.filter = `blur(${actualBlur}px)`;
+        }
+        
+        // Draw the red mask canvas over the black background
+        eCtx.drawImage(document.getElementById('maskCanvas'), 0, 0, exportCanvas.width, exportCanvas.height);
+        eCtx.filter = 'none'; // reset filter
+        
+        // Convert feathered red strokes into a smooth grayscale gradient mask
+        const imgData = eCtx.getImageData(0, 0, exportCanvas.width, exportCanvas.height);
+        const data = imgData.data;
+        for (let i = 0; i < data.length; i += 4) {
+            // Because strokes are rgb(239, 68, 68), we map the max red intensity (239) to pure white (255)
+            let val = Math.min(255, Math.round(data[i] * (255 / 239)));
+            data[i] = val;   // R
+            data[i+1] = val; // G
+            data[i+2] = val; // B
+            data[i+3] = 255; // A
+        }
+        eCtx.putImageData(imgData, 0, 0);
+        
+        const blob = await new Promise(r => exportCanvas.toBlob(r, 'image/png'));
+        maskBytes = new Uint8Array(await blob.arrayBuffer());
+        pyodide.FS.writeFile("input_mask", maskBytes);
+    } else if (document.getElementById('maskInput').files.length) {
         maskBytes = new Uint8Array(await document.getElementById('maskInput').files[0].arrayBuffer());
         pyodide.FS.writeFile("input_mask", maskBytes);
     }
@@ -522,6 +748,7 @@ document.getElementById('processBtn').addEventListener('click', async () => {
     const params = {
        
         invert_interval: document.getElementById('invertInterval').checked,         
+        alpha_blend: document.getElementById('alphaBlend').checked,
         angle_start: parseFloat(document.getElementById('angleStart').value),
         angle_end: parseFloat(document.getElementById('angleEnd').value),
         thresh_lower_start: parseFloat(document.getElementById('threshStart').value),
@@ -547,7 +774,7 @@ document.getElementById('processBtn').addEventListener('click', async () => {
     try {
         const process_image = pyodide.globals.get('process_image');
         
-        const result = await process_image(
+        const response = await process_image(
             "input_image", 
             maskBytes ? "input_mask" : null, 
             intervalBytes ? "input_interval" : null, 
@@ -555,19 +782,28 @@ document.getElementById('processBtn').addEventListener('click', async () => {
             updateProgress
         );
         
+        // Handle the new Array return format directly
+        const result = response.toJs();
+        const fileBytes = result[0]; // Uint8Array of the file
+        const mimeType = result[1];  // String of the mime type
         
-        const blob = new Blob([result.toJs()], { type: 'image/gif' });
-	window.latestBlob = blob;
+        const blob = new Blob([fileBytes], { type: mimeType });
+        const isGif = mimeType === "image/gif";
+        
+        window.latestBlob = blob;
         const url = URL.createObjectURL(blob);
         const outImg = document.getElementById('outputImage');
         outImg.src = url;
-        outImg.classList.remove('hidden');
+        
+        // Ensure the wrapper stays visible after processing
+        document.getElementById('imageWrapper').classList.remove('hidden');
+        
         const dlBtn = document.getElementById('downloadBtn');
         dlBtn.href = url;
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-        dlBtn.setAttribute('download', `pixel-flux-${timestamp}.gif`);
-        //dlBtn.classList.remove('hidden');
-	document.getElementById('actionContainer').classList.remove('hidden');
+        const extension = isGif ? ".gif" : ".png";
+        dlBtn.setAttribute('download', `pixel-flux-${timestamp}${extension}`);
+        document.getElementById('actionContainer').classList.remove('hidden');
 
     } catch (e) { 
         alert("Processing Error: " + e); 
