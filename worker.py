@@ -81,6 +81,13 @@ async def process_image(input_path, mask_path, interval_path, params_json, progr
         if mask_img:
             cur_mask = mask_img.resize(work_frame.size)
             
+            # --- Choke (Erode/Dilate) Logic ---
+            choke_val = int(params.get('mask_choke', 0))
+            if choke_val > 0:
+                for _ in range(choke_val): cur_mask = cur_mask.filter(ImageFilter.MaxFilter(3))
+            elif choke_val < 0:
+                for _ in range(abs(choke_val)): cur_mask = cur_mask.filter(ImageFilter.MinFilter(3))
+            
         cur_interval = None
         if interval_img:
             cur_interval = interval_img.resize(work_frame.size)
@@ -93,12 +100,17 @@ async def process_image(input_path, mask_path, interval_path, params_json, progr
             
             print(f"Frame {i}: Mode={params['interval_func']}, IntervalImg={interval_status}, CL={int(cur_cl)}")
             
-            # --- Alpha Compositing Logic ---
+            # --- Blend Mode & Mask Logic ---
             sort_mask = cur_mask
-            if cur_mask and params.get('alpha_blend', False):
-                # Force the mask to be absolute black and white for the sorting engine to prevent dithering.
-                # Any pixel > 0 (even faint blur) becomes 255 (fully sorted).
-                sort_mask = cur_mask.point(lambda p: 255 if p > 0 else 0, mode='L')
+            blend_mode = params.get('blend_mode', 'alpha')
+            
+            if cur_mask:
+                if blend_mode == 'dither':
+                    # Allow the grayscale feathering to pass directly into the sorter
+                    sort_mask = cur_mask 
+                else:
+                    # Force the mask to be absolute black and white for all other modes
+                    sort_mask = cur_mask.point(lambda p: 255 if p > 0 else 0, mode='L')
             
             sorted_frame = ps_func(
                 work_frame,
@@ -113,8 +125,11 @@ async def process_image(input_path, mask_path, interval_path, params_json, progr
                 angle=float(cur_ang)
             )
 
+            # FORCE RGB mode to ensure ImageChops blending math doesn't crash from an RGBA mismatch
+            sorted_frame = sorted_frame.convert("RGB")
+
             # Re-apply the original feathered mask to blend the hard sort smoothly with the original frame
-            if cur_mask and params.get('alpha_blend', False):
+            if cur_mask and blend_mode == 'alpha':
                 sorted_frame = Image.composite(sorted_frame, work_frame, cur_mask)
 
             if cur_post_blr > 0:

@@ -53,9 +53,14 @@
                     <label class="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
                         <input type="checkbox" id="invertMask" class="rounded text-green-500 focus:ring-green-500 bg-gray-700 border-gray-600"> Invert Mask
                     </label>
-                    <label class="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
-                        <input type="checkbox" id="alphaBlend" checked class="rounded text-green-500 focus:ring-green-500 bg-gray-700 border-gray-600"> Alpha Compositing (Smooth Fade)
-                    </label>
+                    <div class="flex items-center gap-2 mt-1">
+                        <span class="text-sm text-gray-300">Blend Mode:</span>
+                        <select id="blendMode" class="bg-gray-800 border border-gray-700 text-gray-300 text-xs rounded p-1 focus:ring-green-500 focus:border-green-500 cursor-pointer w-full">
+                            <option value="dither">Pixelsort Dither (Original)</option>
+                            <option value="alpha" selected>Alpha Compositing (Smooth Fade)</option>
+                            <option value="none">Hard Sort (Solid Edges)</option>
+                        </select>
+                    </div>
                 </div>
                 
                 <div class="border-t border-gray-700 pt-3 mt-1">
@@ -74,11 +79,17 @@
                             <input type="range" id="maskFeather" min="0" max="100" value="0" oninput="updateFeather(this.value)">
                             <span id="featherDisplay" class="text-xs text-right w-8">0px</span>
                         </div>
+                        <div class="slider-row">
+                            <span>Choke</span>
+                            <input type="range" id="maskChoke" min="-20" max="20" value="0" oninput="document.getElementById('chokeDisplay').innerText = this.value">
+                            <span id="chokeDisplay" class="text-xs text-right w-8">0</span>
+                        </div>
                         <div class="flex gap-2">
                             <button class="bg-blue-900/40 hover:bg-blue-900/80 text-blue-200 border border-blue-800 text-xs py-1.5 rounded w-full transition-colors font-bold tracking-wide" onclick="undoMask()">UNDO</button>
                             <button class="bg-blue-900/40 hover:bg-blue-900/80 text-blue-200 border border-blue-800 text-xs py-1.5 rounded w-full transition-colors font-bold tracking-wide" onclick="redoMask()">REDO</button>
                             <button class="bg-red-900/40 hover:bg-red-900/80 text-red-200 border border-red-800 text-xs py-1.5 rounded w-full transition-colors font-bold tracking-wide" onclick="clearMask()">CLEAR</button>
                         </div>
+                        <button class="bg-purple-900/40 hover:bg-purple-900/80 text-purple-200 border border-purple-800 text-xs py-1.5 rounded w-full transition-colors font-bold tracking-wide mt-1" onclick="generateLumaMask()">GENERATE LUMA MASK</button>
                     </div>
                 </div>
             </div>
@@ -226,6 +237,9 @@
             </a>
             <button id="setSourceBtn" onclick="setAsNewSource()">
                 USE AS NEW SOURCE
+            </button>
+            <button id="toggleMaskVisBtn" onclick="toggleMaskVisibility()" class="hidden">
+                HIDE CUSTOM MASK
             </button>
         </div>
         
@@ -528,17 +542,20 @@ async function resizeImageIfNeeded(file) {
         const canvas = document.getElementById('maskCanvas');
         const btn = document.getElementById('toggleMaskDrawBtn');
         const controls = document.getElementById('maskDrawControls');
+        const visBtn = document.getElementById('toggleMaskVisBtn');
         
         isDrawingMask = !isDrawingMask;
         if (isDrawingMask) {
             canvas.classList.remove('hidden');
             btn.innerText = "Disable";
             controls.classList.remove('hidden');
+            if (visBtn) visBtn.classList.remove('hidden');
             initMaskCanvas();
         } else {
             canvas.classList.add('hidden');
             btn.innerText = "Enable";
             controls.classList.add('hidden');
+            if (visBtn) visBtn.classList.add('hidden');
         }
     }
 
@@ -604,6 +621,63 @@ async function resizeImageIfNeeded(file) {
             saveMaskState();
             const canvas = document.getElementById('maskCanvas');
             maskCtx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+    }
+
+    function generateLumaMask() {
+        const img = document.getElementById('outputImage');
+        if (!img.src || img.src === "") return alert("Please upload an image first.");
+        
+        // Ensure mask canvas is enabled and sized
+        if (!isDrawingMask) toggleMaskDrawing();
+        
+        saveMaskState(); // Allow user to undo this generation
+        
+        const canvas = document.getElementById('maskCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Draw image to a temp canvas to get pixel brightness data
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = canvas.width;
+        tempCanvas.height = canvas.height;
+        const tempCtx = tempCanvas.getContext('2d');
+        tempCtx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        
+        const imgData = tempCtx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imgData.data;
+        
+        // Generate the new red mask where opacity is driven by image brightness (luma)
+        const maskImgData = ctx.createImageData(canvas.width, canvas.height);
+        const maskData = maskImgData.data;
+        
+        for(let i=0; i<data.length; i+=4) {
+            const r = data[i], g = data[i+1], b = data[i+2];
+            // Standard Luma formula
+            const luma = 0.299*r + 0.587*g + 0.114*b;
+            
+            maskData[i] = 239;   // Red
+            maskData[i+1] = 68;  // Green
+            maskData[i+2] = 68;  // Blue
+            maskData[i+3] = luma; // Alpha channel represents the mask intensity
+        }
+        
+        ctx.putImageData(maskImgData, 0, 0);
+        drawnMaskPaths = true;
+    }
+
+    let maskVisible = true;
+    function toggleMaskVisibility() {
+        const canvas = document.getElementById('maskCanvas');
+        const btn = document.getElementById('toggleMaskVisBtn');
+        maskVisible = !maskVisible;
+        if(maskVisible) {
+            canvas.style.opacity = '0.6';
+            canvas.style.pointerEvents = 'auto';
+            btn.innerText = "HIDE CUSTOM MASK";
+        } else {
+            canvas.style.opacity = '0';
+            canvas.style.pointerEvents = 'none';
+            btn.innerText = "SHOW CUSTOM MASK";
         }
     }
 
@@ -721,6 +795,7 @@ document.getElementById('processBtn').addEventListener('click', async () => {
         const data = imgData.data;
         for (let i = 0; i < data.length; i += 4) {
             // Because strokes are rgb(239, 68, 68), we map the max red intensity (239) to pure white (255)
+            // The canvas composition already factors in the alpha channel naturally.
             let val = Math.min(255, Math.round(data[i] * (255 / 239)));
             data[i] = val;   // R
             data[i+1] = val; // G
@@ -748,7 +823,8 @@ document.getElementById('processBtn').addEventListener('click', async () => {
     const params = {
        
         invert_interval: document.getElementById('invertInterval').checked,         
-        alpha_blend: document.getElementById('alphaBlend').checked,
+        blend_mode: document.getElementById('blendMode').value,
+        mask_choke: parseInt(document.getElementById('maskChoke').value),
         angle_start: parseFloat(document.getElementById('angleStart').value),
         angle_end: parseFloat(document.getElementById('angleEnd').value),
         thresh_lower_start: parseFloat(document.getElementById('threshStart').value),
@@ -803,7 +879,16 @@ document.getElementById('processBtn').addEventListener('click', async () => {
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
         const extension = isGif ? ".gif" : ".png";
         dlBtn.setAttribute('download', `pixel-flux-${timestamp}${extension}`);
+        
+        // Make sure the action container is visible
         document.getElementById('actionContainer').classList.remove('hidden');
+        
+        // Reveal the "Show/Hide" toggle button if we were using the custom mask
+        if (isDrawingMask) {
+            document.getElementById('toggleMaskVisBtn').classList.remove('hidden');
+        } else {
+            document.getElementById('toggleMaskVisBtn').classList.add('hidden');
+        }
 
     } catch (e) { 
         alert("Processing Error: " + e); 
