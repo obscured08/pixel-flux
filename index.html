@@ -133,11 +133,21 @@
             </div>
 
             <div class="control-group">
+                <div class="flex justify-between items-center mb-1">
+                    <span class="text-sm font-bold text-gray-300">Angle & Flow</span>
+                    <label class="flex items-center gap-1 text-xs text-gray-400 cursor-pointer" style="margin-right: 45px;">
+                        <input type="checkbox" id="flowField" class="rounded text-green-500 focus:ring-green-500 bg-gray-700 border-gray-600"> Luma Flow Field
+                    </label>
+                </div>
+                <div class="text-xs text-gray-500 mb-2 italic">Flow fields wrap sorting angles to the contours of your image.</div>
                 <button class="sync-btn" onclick="syncValues('angle')">=</button>
-                <div class="text-sm font-bold text-gray-300">Angle</div>
-                <div class="text-xs text-gray-500 mb-2 italic">Angle of pixel sorting in degrees.</div>
                 <div class="slider-row"><span>Start</span><input type="range" id="angleStart" min="0" max="360" value="0"><input type="number" id="angleStartVal" value="0"></div>
                 <div class="slider-row"><span>End</span><input type="range" id="angleEnd" min="0" max="360" value="0"><input type="number" id="angleEndVal" value="0"></div>
+                <div class="slider-row border-t border-gray-700 pt-2 mt-2">
+                    <span>Flow Offset</span>
+                    <input type="range" id="flowOffset" min="0" max="360" value="90">
+                    <input type="number" id="flowOffsetVal" value="90">
+                </div>
             </div>
 
             <div class="control-group">
@@ -179,6 +189,7 @@
                 <div class="slider-row"><span>Start</span><input type="range" id="blurStart" min="0" max="50" value="0"><input type="number" id="blurStartVal" value="0"></div>
                 <div class="slider-row"><span>End</span><input type="range" id="blurEnd" min="0" max="50" value="0"><input type="number" id="blurEndVal" value="0"></div>
             </div>
+            
 
             <div class="control-group">
                 <button class="sync-btn" onclick="syncValues('postBlur')">=</button>
@@ -186,6 +197,14 @@
                 <div class="text-xs text-gray-500 mb-2 italic">Blurs the result after sorting.</div>
                 <div class="slider-row"><span>Start</span><input type="range" id="postBlurStart" min="0" max="50" value="0"><input type="number" id="postBlurStartVal" value="0"></div>
                 <div class="slider-row"><span>End</span><input type="range" id="postBlurEnd" min="0" max="50" value="0"><input type="number" id="postBlurEndVal" value="0"></div>
+            </div>
+
+            <div class="control-group">
+                <button class="sync-btn" onclick="syncValues('quantize')">=</button>
+                <div class="text-sm font-bold text-gray-300">Palette Quantize</div>
+                <div class="text-xs text-gray-500 mb-2 italic">Squash image into limited colors. 0 = Off. Try 4-16 for posterized looks.</div>
+                <div class="slider-row"><span>Start</span><input type="range" id="quantizeStart" min="0" max="64" value="0"><input type="number" id="quantizeStartVal" value="0"></div>
+                <div class="slider-row"><span>End</span><input type="range" id="quantizeEnd" min="0" max="64" value="0"><input type="number" id="quantizeEndVal" value="0"></div>
             </div>
 
             <div class="control-group">
@@ -198,7 +217,6 @@
                     <div id="durationDisplay" class="text-sm font-bold text-white">1.50s</div>
                 </div>
 
-
                 <div class="slider-row">
                     <span>Frames</span>
                     <input type="range" id="frameCount" min="1" max="100" value="15">
@@ -209,6 +227,12 @@
                     <span>FPS</span>
                     <input type="range" id="fps" min="1" max="30" value="10">
                     <input type="number" id="fpsVal" value="10">
+                </div>
+                
+                <div class="slider-row border-t border-blue-800/30 pt-2 mt-2">
+                    <span>Ghosting %</span>
+                    <input type="range" id="ghosting" min="0" max="95" value="0">
+                    <input type="number" id="ghostingVal" value="0">
                 </div>
 
                 <label class="flex items-center gap-2 text-xs text-blue-300 mt-2 border-t border-blue-800/30 pt-2 cursor-pointer">
@@ -292,15 +316,18 @@
 
     const sliderPairs = [
         ['angleStart', 'angleStartVal'], ['angleEnd', 'angleEndVal'],
+        ['flowOffset', 'flowOffsetVal'],
         ['threshStart', 'threshStartVal'], ['threshEnd', 'threshEndVal'],
         ['threshUpperStart', 'threshUpperStartVal'], ['threshUpperEnd', 'threshUpperEndVal'],
         ['randStart', 'randStartVal'], ['randEnd', 'randEndVal'],
         ['charStart', 'charStartVal'], ['charEnd', 'charEndVal'],
         ['blurStart', 'blurStartVal'], ['blurEnd', 'blurEndVal'],
-        ['frameCount', 'frameCountVal'], ['fps', 'fpsVal'],
-        ['postBlurStart', 'postBlurStartVal'], ['postBlurEnd', 'postBlurEndVal']
+        ['postBlurStart', 'postBlurStartVal'], ['postBlurEnd', 'postBlurEndVal'],
+        ['quantizeStart', 'quantizeStartVal'], ['quantizeEnd', 'quantizeEndVal'],
+        ['frameCount', 'frameCountVal'], ['fps', 'fpsVal']
     ];
     sliderPairs.forEach(pair => sync(pair[0], pair[1]));
+    sync('ghosting', 'ghostingVal');
 
     function updateDurationDisplay() {
         const frames = parseFloat(document.getElementById('frameCount').value);
@@ -831,8 +858,10 @@ document.getElementById('processBtn').addEventListener('click', async () => {
         blend_mode: document.getElementById('blendMode').value,
         mask_choke: parseInt(document.getElementById('maskChoke').value),
         invert_sort: document.getElementById('invertSort').checked,
+        flow_field: document.getElementById('flowField').checked,
         angle_start: parseFloat(document.getElementById('angleStart').value),
         angle_end: parseFloat(document.getElementById('angleEnd').value),
+        flow_offset: parseFloat(document.getElementById('flowOffset').value),
         thresh_lower_start: parseFloat(document.getElementById('threshStart').value),
         thresh_lower_end: parseFloat(document.getElementById('threshEnd').value),
         thresh_upper_start: parseFloat(document.getElementById('threshUpperStart').value),
@@ -843,14 +872,17 @@ document.getElementById('processBtn').addEventListener('click', async () => {
         char_end: parseFloat(document.getElementById('charEnd').value),
         blur_start: parseFloat(document.getElementById('blurStart').value),
         blur_end: parseFloat(document.getElementById('blurEnd').value),
+        post_blur_start: parseFloat(document.getElementById('postBlurStart').value),
+        post_blur_end: parseFloat(document.getElementById('postBlurEnd').value),
+        quantize_start: parseFloat(document.getElementById('quantizeStart').value),
+        quantize_end: parseFloat(document.getElementById('quantizeEnd').value),
         frame_count: parseInt(document.getElementById('frameCount').value),
         fps: parseInt(document.getElementById('fps').value),
+        ghosting: parseFloat(document.getElementById('ghosting').value),
         use_source_fps: document.getElementById('useSourceFps').checked,
         sort_func: document.getElementById('sortFunc').value,
         interval_func: document.getElementById('intervalFunc').value,
         invert_mask: document.getElementById('invertMask').checked,
-        post_blur_start: parseFloat(document.getElementById('postBlurStart').value),
-        post_blur_end: parseFloat(document.getElementById('postBlurEnd').value),
     };
 
     try {

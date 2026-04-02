@@ -44,7 +44,8 @@ async def process_image(input_path, mask_path, interval_path, params_json, progr
         params['rand_start'] != params['rand_end'] or
         params['char_start'] != params['char_end'] or
         params['blur_start'] != params['blur_end'] or
-        params['post_blur_start'] != params['post_blur_end']
+        params['post_blur_start'] != params['post_blur_end'] or
+        params.get('quantize_start', 0) != params.get('quantize_end', 0)
     )
     
     target_frames = int(params.get('frame_count', 15))
@@ -57,12 +58,15 @@ async def process_image(input_path, mask_path, interval_path, params_json, progr
     
     total_frames = len(original_frames)
     processed_frames = []
+    prev_processed_frame = None
 
     # --- FPS & Duration Logic ---
     fps = int(params.get('fps', 10))
     duration_ms = int(1000 / fps)
     if params.get('use_source_fps', False) and 'duration' in img.info:
          if img.info['duration'] > 20: duration_ms = img.info['duration']
+
+    ghosting = float(params.get('ghosting', 0)) / 100.0
 
     # --- Processing Loop ---
     for i, frame in enumerate(original_frames):
@@ -81,10 +85,14 @@ async def process_image(input_path, mask_path, interval_path, params_json, progr
         cur_cl = params['char_start'] + (params['char_end'] - params['char_start']) * t
         cur_blr = params['blur_start'] + (params['blur_end'] - params['blur_start']) * t
         cur_post_blr = params['post_blur_start'] + (params['post_blur_end'] - params['post_blur_start']) * t
+        cur_quant = params.get('quantize_start', 0) + (params.get('quantize_end', 0) - params.get('quantize_start', 0)) * t
 
         work_frame = frame.convert("RGB")
         if cur_blr > 0:
             work_frame = work_frame.filter(ImageFilter.GaussianBlur(cur_blr))
+            
+        if cur_quant >= 2:
+            work_frame = work_frame.quantize(colors=int(cur_quant)).convert("RGB")
 
         # Resize Mask & Interval to match current frame size
         cur_mask = None
@@ -126,9 +134,9 @@ async def process_image(input_path, mask_path, interval_path, params_json, progr
             sort_func_name = params['sort_func']
             if params.get('invert_sort', False):
                 sort_func_name = "reverse_" + sort_func_name
-            
-            sorted_frame = ps_func(
-                work_frame,
+                
+            ps_kwargs = dict(
+                image=work_frame,
                 mask_image=sort_mask,
                 interval_image=cur_interval, 
                 interval_function=params['interval_func'],
@@ -136,9 +144,19 @@ async def process_image(input_path, mask_path, interval_path, params_json, progr
                 lower_threshold=float(cur_tl),
                 upper_threshold=float(cur_tu),
                 randomness=float(cur_rnd),
-                char_length=int(cur_cl),
-                angle=float(cur_ang)
+                char_length=int(cur_cl)
             )
+
+            # --- Flow Field (Multi-Angle) Logic ---
+            if params.get('flow_field', False):
+                flow_offset = float(params.get('flow_offset', 90.0))
+                sort1 = ps_func(**ps_kwargs, angle=float(cur_ang))
+                sort2 = ps_func(**ps_kwargs, angle=float(cur_ang + flow_offset))
+                # Generate natural flow mask based on the lightness of the image
+                flow_mask = work_frame.convert("L").filter(ImageFilter.GaussianBlur(10))
+                sorted_frame = Image.composite(sort2.convert("RGB"), sort1.convert("RGB"), flow_mask)
+            else:
+                sorted_frame = ps_func(**ps_kwargs, angle=float(cur_ang))
 
             # FORCE RGB mode to ensure ImageChops blending math doesn't crash from an RGBA mismatch
             sorted_frame = sorted_frame.convert("RGB")
@@ -149,6 +167,11 @@ async def process_image(input_path, mask_path, interval_path, params_json, progr
 
             if cur_post_blr > 0:
                 sorted_frame = sorted_frame.filter(ImageFilter.GaussianBlur(cur_post_blr))
+
+            # --- Temporal Ghosting Logic ---
+            if ghosting > 0.0 and prev_processed_frame is not None:
+                sorted_frame = Image.blend(sorted_frame, prev_processed_frame, ghosting)
+            prev_processed_frame = sorted_frame.copy()
 
             processed_frames.append(sorted_frame)
         except Exception as e:
