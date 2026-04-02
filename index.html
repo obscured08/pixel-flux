@@ -115,7 +115,12 @@
                     </select>
                 </div>
                 <div class="control-group">
-                    <label class="block text-xs font-bold mb-1 text-gray-300">Sorting Function</label>
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="block text-xs font-bold text-gray-300">Sorting Function</label>
+                        <label class="flex items-center gap-1 text-xs text-gray-400 cursor-pointer">
+                            <input type="checkbox" id="invertSort" class="rounded text-green-500 focus:ring-green-500 bg-gray-700 border-gray-600"> Invert Sort
+                        </label>
+                    </div>
                     <select id="sortFunc" class="w-full bg-gray-800 border border-gray-700 text-white text-sm rounded focus:ring-green-500 focus:border-green-500 block p-2">
                         <option value="lightness">Lightness</option>
                         <option value="hue">Hue</option>
@@ -825,6 +830,7 @@ document.getElementById('processBtn').addEventListener('click', async () => {
         invert_interval: document.getElementById('invertInterval').checked,         
         blend_mode: document.getElementById('blendMode').value,
         mask_choke: parseInt(document.getElementById('maskChoke').value),
+        invert_sort: document.getElementById('invertSort').checked,
         angle_start: parseFloat(document.getElementById('angleStart').value),
         angle_end: parseFloat(document.getElementById('angleEnd').value),
         thresh_lower_start: parseFloat(document.getElementById('threshStart').value),

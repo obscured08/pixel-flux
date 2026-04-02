@@ -1,10 +1,20 @@
 import asyncio
 import json
 import pixelsort
-from PIL import Image, ImageSequence, ImageFilter, ImageOps, ImageFile
+from PIL import Image, ImageSequence, ImageFilter, ImageOps, ImageFile, ImageChops
 from pixelsort import pixelsort as ps_func
+import pixelsort.sorting as sorting_module
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
+
+# --- Inject Custom Reverse Sorting Functions ---
+# By negating the return value of the original functions, we flip the sort direction
+if "reverse_lightness" not in sorting_module.choices:
+    sorting_module.choices["reverse_lightness"] = lambda p: -sorting_module.lightness(p)
+    sorting_module.choices["reverse_hue"] = lambda p: -sorting_module.hue(p)
+    sorting_module.choices["reverse_saturation"] = lambda p: -sorting_module.saturation(p)
+    sorting_module.choices["reverse_intensity"] = lambda p: -sorting_module.intensity(p)
+    sorting_module.choices["reverse_minimum"] = lambda p: -sorting_module.minimum(p)
 
 async def process_image(input_path, mask_path, interval_path, params_json, progress_callback=None):
     print("PYTHON STARTING...")
@@ -112,12 +122,17 @@ async def process_image(input_path, mask_path, interval_path, params_json, progr
                     # Force the mask to be absolute black and white for all other modes
                     sort_mask = cur_mask.point(lambda p: 255 if p > 0 else 0, mode='L')
             
+            # --- Dynamic Sorting Mode Logic ---
+            sort_func_name = params['sort_func']
+            if params.get('invert_sort', False):
+                sort_func_name = "reverse_" + sort_func_name
+            
             sorted_frame = ps_func(
                 work_frame,
                 mask_image=sort_mask,
                 interval_image=cur_interval, 
                 interval_function=params['interval_func'],
-                sorting_function=params['sort_func'],
+                sorting_function=sort_func_name,
                 lower_threshold=float(cur_tl),
                 upper_threshold=float(cur_tu),
                 randomness=float(cur_rnd),
