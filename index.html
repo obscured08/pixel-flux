@@ -183,28 +183,55 @@
             </div>
 
             <div class="control-group">
-                <button class="sync-btn" onclick="syncValues('blur')">=</button>
-                <div class="text-sm font-bold text-gray-300">Pre-Sort Blur</div>
+                <div class="flex justify-between items-center mb-1">
+                    <span class="text-sm font-bold text-gray-300">Pre-Sort Blur</span>
+                    <label class="flex items-center gap-1 text-xs text-gray-400 cursor-pointer" style="margin-right: 45px;">
+                        <input type="checkbox" id="maskAwarePreBlur" class="rounded text-green-500 focus:ring-green-500 bg-gray-700 border-gray-600"> Mask-Aware
+                    </label>
+                </div>
                 <div class="text-xs text-gray-500 mb-2 italic">Source image blur.</div>
+                <button class="sync-btn" onclick="syncValues('blur')">=</button>
                 <div class="slider-row"><span>Start</span><input type="range" id="blurStart" min="0" max="50" value="0"><input type="number" id="blurStartVal" value="0"></div>
                 <div class="slider-row"><span>End</span><input type="range" id="blurEnd" min="0" max="50" value="0"><input type="number" id="blurEndVal" value="0"></div>
             </div>
             
-
             <div class="control-group">
-                <button class="sync-btn" onclick="syncValues('postBlur')">=</button>
-                <div class="text-sm font-bold text-gray-300">Post-Sort Blur</div>
-                <div class="text-xs text-gray-500 mb-2 italic">Blurs the result after sorting.</div>
-                <div class="slider-row"><span>Start</span><input type="range" id="postBlurStart" min="0" max="50" value="0"><input type="number" id="postBlurStartVal" value="0"></div>
-                <div class="slider-row"><span>End</span><input type="range" id="postBlurEnd" min="0" max="50" value="0"><input type="number" id="postBlurEndVal" value="0"></div>
+                <div class="flex justify-between items-center mb-1">
+                    <span class="text-sm font-bold text-gray-300">Palette Quantize</span>
+                    <label class="flex items-center gap-1 text-xs text-gray-400 cursor-pointer" style="margin-right: 45px;">
+                        <input type="checkbox" id="maskAwarePalette" class="rounded text-green-500 focus:ring-green-500 bg-gray-700 border-gray-600"> Mask-Aware
+                    </label>
+                </div>
+                <div class="text-xs text-gray-500 mb-2 italic">Squash image into limited colors. 0 = Off. Try 4-16 for posterized looks.</div>
+                <button class="sync-btn" onclick="syncValues('quantize')">=</button>
+                <div class="slider-row"><span>Start</span><input type="range" id="quantizeStart" min="0" max="64" value="0"><input type="number" id="quantizeStartVal" value="0"></div>
+                <div class="slider-row"><span>End</span><input type="range" id="quantizeEnd" min="0" max="64" value="0"><input type="number" id="quantizeEndVal" value="0"></div>
             </div>
 
             <div class="control-group">
-                <button class="sync-btn" onclick="syncValues('quantize')">=</button>
-                <div class="text-sm font-bold text-gray-300">Palette Quantize</div>
-                <div class="text-xs text-gray-500 mb-2 italic">Squash image into limited colors. 0 = Off. Try 4-16 for posterized looks.</div>
-                <div class="slider-row"><span>Start</span><input type="range" id="quantizeStart" min="0" max="64" value="0"><input type="number" id="quantizeStartVal" value="0"></div>
-                <div class="slider-row"><span>End</span><input type="range" id="quantizeEnd" min="0" max="64" value="0"><input type="number" id="quantizeEndVal" value="0"></div>
+                <div class="flex justify-between items-center mb-1">
+                    <span class="text-sm font-bold text-gray-300">Effect Blend %</span>
+                    <label class="flex items-center gap-1 text-xs text-gray-400 cursor-pointer" style="margin-right: 45px;">
+                        <input type="checkbox" id="maskAwareBlend" class="rounded text-green-500 focus:ring-green-500 bg-gray-700 border-gray-600"> Mask-Aware
+                    </label>
+                </div>
+                <div class="text-xs text-gray-500 mb-2 italic">Opacity of the sorted result. 100% = Full Effect.</div>
+                <button class="sync-btn" onclick="syncValues('blend')">=</button>
+                <div class="slider-row"><span>Start</span><input type="range" id="blendStart" min="0" max="100" value="100"><input type="number" id="blendStartVal" value="100"></div>
+                <div class="slider-row"><span>End</span><input type="range" id="blendEnd" min="0" max="100" value="100"><input type="number" id="blendEndVal" value="100"></div>
+            </div>
+
+            <div class="control-group">
+                <div class="flex justify-between items-center mb-1">
+                    <span class="text-sm font-bold text-gray-300">Post-Sort Blur</span>
+                    <label class="flex items-center gap-1 text-xs text-gray-400 cursor-pointer" style="margin-right: 45px;">
+                        <input type="checkbox" id="maskAwarePostBlur" class="rounded text-green-500 focus:ring-green-500 bg-gray-700 border-gray-600"> Mask-Aware
+                    </label>
+                </div>
+                <div class="text-xs text-gray-500 mb-2 italic">Blurs the result after sorting.</div>
+                <button class="sync-btn" onclick="syncValues('postBlur')">=</button>
+                <div class="slider-row"><span>Start</span><input type="range" id="postBlurStart" min="0" max="50" value="0"><input type="number" id="postBlurStartVal" value="0"></div>
+                <div class="slider-row"><span>End</span><input type="range" id="postBlurEnd" min="0" max="50" value="0"><input type="number" id="postBlurEndVal" value="0"></div>
             </div>
 
             <div class="control-group">
@@ -322,6 +349,7 @@
         ['randStart', 'randStartVal'], ['randEnd', 'randEndVal'],
         ['charStart', 'charStartVal'], ['charEnd', 'charEndVal'],
         ['blurStart', 'blurStartVal'], ['blurEnd', 'blurEndVal'],
+        ['blendStart', 'blendStartVal'], ['blendEnd', 'blendEndVal'],
         ['postBlurStart', 'postBlurStartVal'], ['postBlurEnd', 'postBlurEndVal'],
         ['quantizeStart', 'quantizeStartVal'], ['quantizeEnd', 'quantizeEndVal'],
         ['frameCount', 'frameCountVal'], ['fps', 'fpsVal']
@@ -333,12 +361,23 @@
         const frames = parseFloat(document.getElementById('frameCount').value);
         const fps = parseFloat(document.getElementById('fps').value);
         const display = document.getElementById('durationDisplay');
-        if (fps > 0) {
+        
+        const fileInput = document.getElementById('imageInput');
+        const isGif = fileInput && fileInput.files.length > 0 && fileInput.files[0].type === 'image/gif';
+        const useSource = document.getElementById('useSourceFps') && document.getElementById('useSourceFps').checked;
+        
+        if (isGif && useSource) {
+            display.innerText = "Source GIF Speed";
+            display.style.color = "#9ca3af"; // Grayed out
+        } else if (fps > 0) {
             const dur = (frames / fps).toFixed(2);
             display.innerText = dur + "s";
             display.style.color = dur > 5 ? "#fb923c" : "white";
         }
     }
+    
+    // Re-evaluate duration string if the "Keep Source" box is clicked
+    document.getElementById('useSourceFps').addEventListener('change', updateDurationDisplay);
 
     function syncValues(prefix) {
         const startVal = document.getElementById(prefix + 'Start').value;
@@ -423,6 +462,7 @@
 
             img.onload = function() {
                 updateScaleFeedback(img.naturalWidth, img.naturalHeight, file.type);
+                updateDurationDisplay(); // Force a UI update here when a new file loads
                 if (isDrawingMask) initMaskCanvas();
             };
 
@@ -872,10 +912,16 @@ document.getElementById('processBtn').addEventListener('click', async () => {
         char_end: parseFloat(document.getElementById('charEnd').value),
         blur_start: parseFloat(document.getElementById('blurStart').value),
         blur_end: parseFloat(document.getElementById('blurEnd').value),
+        mask_aware_pre_blur: document.getElementById('maskAwarePreBlur').checked,
+        blend_start: parseFloat(document.getElementById('blendStart').value),
+        blend_end: parseFloat(document.getElementById('blendEnd').value),
+        mask_aware_blend: document.getElementById('maskAwareBlend').checked,
         post_blur_start: parseFloat(document.getElementById('postBlurStart').value),
         post_blur_end: parseFloat(document.getElementById('postBlurEnd').value),
+        mask_aware_post_blur: document.getElementById('maskAwarePostBlur').checked,
         quantize_start: parseFloat(document.getElementById('quantizeStart').value),
         quantize_end: parseFloat(document.getElementById('quantizeEnd').value),
+        mask_aware_palette: document.getElementById('maskAwarePalette').checked,
         frame_count: parseInt(document.getElementById('frameCount').value),
         fps: parseInt(document.getElementById('fps').value),
         ghosting: parseFloat(document.getElementById('ghosting').value),

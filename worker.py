@@ -37,6 +37,8 @@ async def process_image(input_path, mask_path, interval_path, params_json, progr
 
     # --- Frame Detection Logic ---
     input_is_animated = getattr(img, "is_animated", False) and img.n_frames > 1
+    
+    # We must trigger animation not just for slider differences, but for "boiling" intervals or ghosting
     user_wants_animation = (
         params['angle_start'] != params['angle_end'] or
         params['thresh_lower_start'] != params['thresh_lower_end'] or
@@ -45,7 +47,10 @@ async def process_image(input_path, mask_path, interval_path, params_json, progr
         params['char_start'] != params['char_end'] or
         params['blur_start'] != params['blur_end'] or
         params['post_blur_start'] != params['post_blur_end'] or
-        params.get('quantize_start', 0) != params.get('quantize_end', 0)
+        params.get('quantize_start', 0) != params.get('quantize_end', 0) or
+        params.get('blend_start', 100) != params.get('blend_end', 100) or
+        float(params.get('ghosting', 0)) > 0 or
+        params.get('interval_func') in ['random', 'waves']
     )
     
     target_frames = int(params.get('frame_count', 15))
@@ -53,8 +58,12 @@ async def process_image(input_path, mask_path, interval_path, params_json, progr
         target_frames = 1
 
     original_frames = [f.copy() for f in ImageSequence.Iterator(img)]
+    
+    # Loop frames to match target_frames if necessary (useful for stretching short GIFs or making static images into GIFs)
     if len(original_frames) == 1 and target_frames > 1:
         original_frames = [original_frames[0]] * target_frames
+    elif len(original_frames) > 1 and target_frames > 1 and target_frames != len(original_frames):
+        original_frames = [original_frames[i % len(original_frames)] for i in range(target_frames)]
     
     total_frames = len(original_frames)
     processed_frames = []
@@ -86,15 +95,11 @@ async def process_image(input_path, mask_path, interval_path, params_json, progr
         cur_blr = params['blur_start'] + (params['blur_end'] - params['blur_start']) * t
         cur_post_blr = params['post_blur_start'] + (params['post_blur_end'] - params['post_blur_start']) * t
         cur_quant = params.get('quantize_start', 0) + (params.get('quantize_end', 0) - params.get('quantize_start', 0)) * t
+        cur_blend = (params.get('blend_start', 100) + (params.get('blend_end', 100) - params.get('blend_start', 100)) * t) / 100.0
 
         work_frame = frame.convert("RGB")
-        if cur_blr > 0:
-            work_frame = work_frame.filter(ImageFilter.GaussianBlur(cur_blr))
             
-        if cur_quant >= 2:
-            work_frame = work_frame.quantize(colors=int(cur_quant)).convert("RGB")
-
-        # Resize Mask & Interval to match current frame size
+        # Resize Mask to match current frame size BEFORE any blurring or quantization
         cur_mask = None
         if mask_img:
             cur_mask = mask_img.resize(work_frame.size)
@@ -105,7 +110,31 @@ async def process_image(input_path, mask_path, interval_path, params_json, progr
                 for _ in range(choke_val): cur_mask = cur_mask.filter(ImageFilter.MaxFilter(3))
             elif choke_val < 0:
                 for _ in range(abs(choke_val)): cur_mask = cur_mask.filter(ImageFilter.MinFilter(3))
-            
+
+        # --- Pre-Sort Blur Logic ---
+        if cur_blr > 0:
+            if params.get('mask_aware_pre_blur', False) and cur_mask:
+                blurred_frame = work_frame.filter(ImageFilter.GaussianBlur(cur_blr))
+                work_frame = Image.composite(blurred_frame, work_frame, cur_mask)
+            else:
+                work_frame = work_frame.filter(ImageFilter.GaussianBlur(cur_blr))
+
+        # --- Palette Quantization Logic ---
+        if cur_quant >= 2:
+            if params.get('mask_aware_palette', False) and cur_mask:
+                # Isolate the masked area to calculate the palette
+                palette_source = work_frame.copy()
+                palette_source.putalpha(cur_mask)
+                
+                # Quantize the isolated area
+                quantized_temp = palette_source.quantize(colors=int(cur_quant)).convert("RGB")
+                
+                # Composite the quantized version ONLY over the masked area of the original frame
+                work_frame = Image.composite(quantized_temp, work_frame, cur_mask)
+            else:
+                # Original global quantization
+                work_frame = work_frame.quantize(colors=int(cur_quant)).convert("RGB")
+
         cur_interval = None
         if interval_img:
             cur_interval = interval_img.resize(work_frame.size)
@@ -161,12 +190,27 @@ async def process_image(input_path, mask_path, interval_path, params_json, progr
             # FORCE RGB mode to ensure ImageChops blending math doesn't crash from an RGBA mismatch
             sorted_frame = sorted_frame.convert("RGB")
 
+            # --- Global Effect Blend Logic ---
+            if cur_blend < 1.0:
+                blended_frame = Image.blend(work_frame, sorted_frame, cur_blend)
+                if params.get('mask_aware_blend', False) and cur_mask:
+                    # Apply the blend ONLY inside the mask area
+                    sorted_frame = Image.composite(blended_frame, sorted_frame, cur_mask)
+                else:
+                    # Apply blend globally
+                    sorted_frame = blended_frame
+
             # Re-apply the original feathered mask to blend the hard sort smoothly with the original frame
             if cur_mask and blend_mode == 'alpha':
                 sorted_frame = Image.composite(sorted_frame, work_frame, cur_mask)
 
+            # --- Post-Sort Blur Logic ---
             if cur_post_blr > 0:
-                sorted_frame = sorted_frame.filter(ImageFilter.GaussianBlur(cur_post_blr))
+                if params.get('mask_aware_post_blur', False) and cur_mask:
+                    blurred_post = sorted_frame.filter(ImageFilter.GaussianBlur(cur_post_blr))
+                    sorted_frame = Image.composite(blurred_post, sorted_frame, cur_mask)
+                else:
+                    sorted_frame = sorted_frame.filter(ImageFilter.GaussianBlur(cur_post_blr))
 
             # --- Temporal Ghosting Logic ---
             if ghosting > 0.0 and prev_processed_frame is not None:
