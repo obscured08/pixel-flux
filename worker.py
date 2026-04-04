@@ -48,17 +48,21 @@ async def process_image(input_path, mask_path, interval_path, params_json, progr
         params.get('blend_start', 100) != params.get('blend_end', 100)
     )
     
-    # We only generate a GIF if the source is already a GIF OR if the user is animating sliders
-    # This prevents still images from turning into GIFs just because "Random" intervals are selected.
-    target_frames = int(params.get('frame_count', 15))
-    if not input_is_animated and not sliders_moved:
-        target_frames = 1
-
     original_frames = [f.copy() for f in ImageSequence.Iterator(img)]
+
+    # --- Fix: Respect Source GIF Frame Count ---
+    # If it's a GIF and the user wants to keep original speed/length, use the exact frame count of the source
+    if input_is_animated and params.get('use_source_fps', False):
+        target_frames = len(original_frames)
+    else:
+        target_frames = int(params.get('frame_count', 15))
+        # We only generate a GIF if the source is a GIF OR if the user is animating sliders
+        if not input_is_animated and not sliders_moved:
+            target_frames = 1
     
     if len(original_frames) == 1 and target_frames > 1:
         original_frames = [original_frames[0]] * target_frames
-    elif len(original_frames) > 1 and target_frames > 1 and target_frames != len(original_frames):
+    elif len(original_frames) > 1 and target_frames != len(original_frames):
         original_frames = [original_frames[i % len(original_frames)] for i in range(target_frames)]
     
     total_frames = len(original_frames)
