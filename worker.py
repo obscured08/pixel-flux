@@ -51,12 +51,10 @@ async def process_image(input_path, mask_path, interval_path, params_json, progr
     original_frames = [f.copy() for f in ImageSequence.Iterator(img)]
 
     # --- Fix: Respect Source GIF Frame Count ---
-    # If it's a GIF and the user wants to keep original speed/length, use the exact frame count of the source
     if input_is_animated and params.get('use_source_fps', False):
         target_frames = len(original_frames)
     else:
         target_frames = int(params.get('frame_count', 15))
-        # We only generate a GIF if the source is a GIF OR if the user is animating sliders
         if not input_is_animated and not sliders_moved:
             target_frames = 1
     
@@ -137,12 +135,18 @@ async def process_image(input_path, mask_path, interval_path, params_json, progr
             sort_func_name = params['sort_func']
             if params.get('invert_sort', False):
                 sort_func_name = "reverse_" + sort_func_name
+            
+            # --- Smart Interval Override ---
+            interval_func_name = params['interval_func']
+            # If an image is loaded but the user didn't select 'file' or 'file-edges', force it so the library processes it
+            if cur_interval and interval_func_name not in ['file', 'file-edges']:
+                interval_func_name = 'file'
                 
             ps_kwargs = dict(
                 image=work_frame,
                 mask_image=sort_mask,
                 interval_image=cur_interval, 
-                interval_function=params['interval_func'],
+                interval_function=interval_func_name,
                 sorting_function=sort_func_name,
                 lower_threshold=float(cur_tl),
                 upper_threshold=float(cur_tu),

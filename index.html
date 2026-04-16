@@ -111,6 +111,8 @@
                         <option value="edges">Edges</option>
                         <option value="random">Random</option>
                         <option value="waves">Waves</option>
+                        <option value="file">Uploaded Image (Standard)</option> 
+                        <option value="file-edges">Uploaded Image (Edges)</option> 
                         <option value="none">None (Full)</option> 
                     </select>
                 </div>
@@ -480,6 +482,13 @@
         };
         reader.readAsDataURL(file);
     }
+    
+    // Switch dropdown to 'file' automatically when an interval image is selected
+    document.getElementById('intervalInput').addEventListener('change', function(e) {
+        if (e.target.files.length > 0) {
+            document.getElementById('intervalFunc').value = 'file';
+        }
+    });
 
     function updateScaleFeedback(width, height, type) {
         const feedbackEl = document.getElementById('scaleFeedback');
