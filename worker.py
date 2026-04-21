@@ -50,13 +50,17 @@ async def process_image(input_path, mask_path, interval_path, params_json, progr
     
     original_frames = [f.copy() for f in ImageSequence.Iterator(img)]
 
-    # --- Fix: Respect Source GIF Frame Count ---
+    # --- Fix: Respect Source GIF Frame Count & Speed ---
     if input_is_animated and params.get('use_source_fps', False):
         target_frames = len(original_frames)
     else:
         target_frames = int(params.get('frame_count', 15))
         if not input_is_animated and not sliders_moved:
             target_frames = 1
+            
+        # Strip original duration metadata so manual FPS slider controls the final speed
+        for f in original_frames:
+            f.info.pop('duration', None)
     
     if len(original_frames) == 1 and target_frames > 1:
         original_frames = [original_frames[0]] * target_frames
@@ -138,7 +142,6 @@ async def process_image(input_path, mask_path, interval_path, params_json, progr
             
             # --- Smart Interval Override ---
             interval_func_name = params['interval_func']
-            # If an image is loaded but the user didn't select 'file' or 'file-edges', force it so the library processes it
             if cur_interval and interval_func_name not in ['file', 'file-edges']:
                 interval_func_name = 'file'
                 
