@@ -62,10 +62,13 @@ async def process_image(input_path, mask_path, interval_path, params_json, progr
         for f in original_frames:
             f.info.pop('duration', None)
     
+    # --- Time-Stretching / Interpolation Math ---
     if len(original_frames) == 1 and target_frames > 1:
+        # Duplicate single frame
         original_frames = [original_frames[0]] * target_frames
     elif len(original_frames) > 1 and target_frames != len(original_frames):
-        original_frames = [original_frames[i % len(original_frames)] for i in range(target_frames)]
+        # Stretch or compress GIF to perfectly fit the target frame count
+        original_frames = [original_frames[int((i / target_frames) * len(original_frames))] for i in range(target_frames)]
     
     total_frames = len(original_frames)
     processed_frames = []
